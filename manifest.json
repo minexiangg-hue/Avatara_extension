@@ -1,0 +1,62 @@
+{
+  "manifest_version": 3,
+  "name": "Avatara — Your Browser, Understood",
+  "short_name": "Avatara",
+  "version": "0.1.0",
+  "description": "Your browser butler. Knows what you've seen, finds what you've forgotten, notices what you'd miss.",
+  "author": "Avatara Team",
+  "minimum_chrome_version": "128",
+  "icons": {
+    "16": "assets/icons/icon-16.png",
+    "48": "assets/icons/icon-48.png",
+    "128": "assets/icons/icon-128.png"
+  },
+  "permissions": [
+    "tabs",
+    "tabGroups",
+    "bookmarks",
+    "history",
+    "storage",
+    "alarms",
+    "notifications",
+    "sidePanel",
+    "scripting",
+    "contextMenus",
+    "downloads",
+    "webNavigation",
+    "idle"
+  ],
+  "background": {
+    "service_worker": "src/background/index.js",
+    "type": "module"
+  },
+  "side_panel": {
+    "default_path": "src/sidepanel/index.html"
+  },
+  "action": {
+    "default_popup": "src/popup/index.html",
+    "default_title": "Avatara",
+    "default_icon": {
+      "16": "assets/icons/icon-16.png",
+      "48": "assets/icons/icon-48.png",
+      "128": "assets/icons/icon-128.png"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["src/content/page-marker.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "commands": {
+    "open-side-panel": {
+      "suggested_key": { "default": "Ctrl+Shift+A", "mac": "Command+Shift+A" },
+      "description": "Open Avatara side panel"
+    },
+    "quick-search": {
+      "suggested_key": { "default": "Ctrl+Shift+F", "mac": "Command+Shift+F" },
+      "description": "Search your browsing history with Avatara"
+    }
+  }
+}

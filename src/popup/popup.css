@@ -1,0 +1,122 @@
+/* ============================================================
+   Avatara — Popup Styles
+   ============================================================ */
+:root {
+  --color-bg-primary: #0f0f14;
+  --color-bg-secondary: #181822;
+  --color-bg-tertiary: #222233;
+  --color-surface: #1c1c2a;
+  --color-surface-hover: #242438;
+  --color-text-primary: #e4e4ec;
+  --color-text-secondary: #a0a0b8;
+  --color-text-muted: #6b6b80;
+  --color-accent: #c4a35a;
+  --color-accent-hover: #d4b36a;
+  --color-accent-muted: rgba(196, 163, 90, 0.12);
+  --color-accent-text: #0f0f14;
+  --color-danger: #e0556a;
+  --color-border: #2a2a3c;
+  --space-xs: 4px; --space-sm: 8px; --space-md: 12px; --space-lg: 16px;
+  --radius-sm: 4px; --radius-md: 8px; --radius-full: 9999px;
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.3);
+  --font-family: system-ui, -apple-system, sans-serif;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  width: 340px;
+  font-family: var(--font-family);
+  font-size: 13px;
+  color: var(--color-text-primary);
+  background: var(--color-bg-primary);
+  -webkit-font-smoothing: antialiased;
+}
+
+.popup-shell {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+  min-height: 200px;
+}
+
+.popup-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding-bottom: var(--space-sm);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.popup-logo-dot {
+  width: 8px; height: 8px;
+  border-radius: var(--radius-full);
+  background: var(--color-accent);
+}
+
+.popup-title {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.popup-section {
+  padding: var(--space-sm) 0;
+}
+
+.popup-search {
+  width: 100%;
+  padding: var(--space-sm) var(--space-md);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-tertiary);
+  color: var(--color-text-primary);
+  font-size: 13px;
+  font-family: inherit;
+}
+.popup-search:focus { outline: none; border-color: var(--color-accent); }
+.popup-search::placeholder { color: var(--color-text-muted); }
+
+.popup-actions {
+  display: flex;
+  gap: var(--space-sm);
+  padding-top: var(--space-sm);
+}
+
+.popup-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: var(--space-sm);
+  border-top: 1px solid var(--color-border);
+  font-size: 11px;
+}
+
+/* Reuse key components from sidepanel */
+.btn {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: var(--space-xs) var(--space-md); cursor: pointer;
+  border: 1px solid var(--color-border); border-radius: var(--radius-md);
+  background: var(--color-surface); color: var(--color-text-primary);
+  font-size: 12px; font-family: inherit; transition: all 0.15s;
+}
+.btn:hover { background: var(--color-surface-hover); }
+.btn-primary { background: var(--color-accent); color: var(--color-accent-text); border-color: var(--color-accent); }
+.btn-primary:hover { background: var(--color-accent-hover); }
+.btn-icon { width: 24px; height: 24px; padding: 0; border: none; background: none; cursor: pointer; font-size: 14px; }
+.btn-sm { padding: 2px 8px; font-size: 11px; }
+
+.badge {
+  display: inline-flex; padding: 1px 6px; border-radius: var(--radius-full);
+  font-size: 10px; font-weight: 500;
+}
+.badge--accent { background: var(--color-accent-muted); color: var(--color-accent); }
+
+.text-muted { color: var(--color-text-muted); }
+
+.skeleton {
+  background: var(--color-bg-tertiary); border-radius: var(--radius-md);
+  animation: shimmer 1.5s infinite;
+}
+@keyframes shimmer {
+  0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; }
+}
