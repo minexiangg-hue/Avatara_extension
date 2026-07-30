@@ -24,6 +24,9 @@ let _addEvent = null;
 /** @type {(tabId: number) => Promise<object|null>} */
 let _extractPageMetadata = null;
 
+/** @type {(url: string, metadata: object) => Promise<void>} */
+let _indexPage = null;
+
 // Timer handles for deferred content extraction
 /** @type {Map<number, ReturnType<typeof setTimeout>>} */
 const _extractionTimers = new Map();
@@ -41,11 +44,13 @@ const _extractionTimers = new Map();
  * @param {{
  *   addEvent: (eventType: string, data: object) => Promise<number>,
  *   extractPageMetadata: (tabId: number) => Promise<object|null>,
+ *   indexPage: (url: string, metadata: object) => Promise<void>,
  * }} deps
  */
-export function setupEventListeners({ addEvent, extractPageMetadata }) {
+export function setupEventListeners({ addEvent, extractPageMetadata, indexPage }) {
   _addEvent = addEvent;
   _extractPageMetadata = extractPageMetadata;
+  _indexPage = indexPage;
 
   // --- Tabs ---
   _setupTabListeners();
@@ -415,6 +420,11 @@ function _scheduleExtraction(tabId) {
       tabId,
       source: 'content_extractor',
     });
+
+    // Index the page for search (async, fire-and-forget)
+    if (_indexPage && metadata.url) {
+      _indexPage(metadata.url, metadata).catch(() => {});
+    }
   }, CONFIG_INGESTION.MIN_VISIT_DURATION_MS);
 
   _extractionTimers.set(tabId, handle);

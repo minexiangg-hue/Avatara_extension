@@ -34,6 +34,15 @@ import { startHistoryImport } from './ingestion/history-import.js';
 import { setupEventListeners } from './ingestion/event-listeners.js';
 import { extractPageMetadata } from './ingestion/content-extractor.js';
 
+// --- Knowledge subsystem ---
+import * as interestGraph from './knowledge/interest-graph.js';
+import * as behaviorPatterns from './knowledge/behavior-patterns.js';
+import { searchIndex, indexPage } from './knowledge/content-indexer.js';
+
+// --- Butler subsystem ---
+import { parseCommand, executeCommand } from './butler/nl-parser.js';
+import { checkAndGenerateAlerts } from './butler/alert-engine.js';
+
 // ===========================================================================
 // Alarm names
 // ===========================================================================
@@ -77,6 +86,7 @@ chrome.runtime.onStartup.addListener(async () => {
 setupEventListeners({
   addEvent: experienceStream.addEvent,
   extractPageMetadata,
+  indexPage,
 });
 
 // ===========================================================================
@@ -203,17 +213,38 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
   logger.debug('BG', `Alarm fired: ${alarm.name}`);
 
   if (alarm.name === ALARM_KNOWLEDGE_EXTRACTION) {
-    // Compact old entries (aggregate into daily summaries)
+    // 1. Compact old entries (aggregate into daily summaries)
     await experienceStream.compactOldEntries();
 
-    // Broadcast a snapshot so the knowledge engine can process new events.
-    // The knowledge engine (loaded in a future phase) listens for this and
-    // runs interest clustering, pattern detection, etc.
-    chrome.runtime
-      .sendMessage({ type: MSG_KNOWLEDGE.BEHAVIOR_SNAPSHOT })
-      .catch(() => {
-        // No listener yet — that's fine.
-      });
+    // 2. Pull recent events and feed them into the knowledge engine
+    const recentEvents = await experienceStream.getRecentEvents(
+      KNOWLEDGE.EXTRACTION_INTERVAL_MIN * 60,
+      500,
+    );
+    if (recentEvents.length > 0) {
+      // Update behavior patterns (batch — takes an array)
+      await behaviorPatterns.updateFromEvents(recentEvents);
+
+      // Update interest graph (per-event — process recent page visits)
+      const pageVisits = recentEvents.filter(
+        e => e.eventType === MSG_INGESTION.PAGE_VISITED,
+      );
+      for (const evt of pageVisits.slice(0, 50)) {
+        await interestGraph.updateFromEvent(evt);
+      }
+    }
+
+    // 3. Run alert engine — proactively detect trends, stale tabs, missed sites
+    try {
+      await checkAndGenerateAlerts();
+    } catch (err) {
+      logger.error('BG', 'Alert engine failed', err.message);
+    }
+
+    logger.debug(
+      'BG',
+      `Knowledge extraction complete: ${recentEvents.length} events processed`,
+    );
   }
 
   if (alarm.name === ALARM_COMPACTION) {
@@ -327,15 +358,40 @@ const messageRouter = {
     return { dismissed: true };
   },
 
-  // --- Butler (stubs for now — the butler subsystem will replace these) ---
-  [MSG_BUTLER.NL_SEARCH]: async (_payload) => {
-    logger.debug('BG', 'NL_SEARCH — not yet implemented');
-    return { results: [], note: 'NL search engine not yet available' };
+  // --- Butler ---
+  [MSG_BUTLER.NL_SEARCH]: async (payload) => {
+    const query = payload?.query || '';
+    if (!query) return { results: [], note: 'Empty query' };
+
+    const parsed = await parseCommand(query);
+    const searchQuery = parsed.params?.query || query;
+    const timeRange = parsed.params?.timeRange;
+    const results = await searchIndex(searchQuery, { timeRange, limit: 20 });
+
+    logger.debug('BG', `NL_SEARCH "${searchQuery}" timeRange=${timeRange} → ${results.length} results`);
+    return { results, parsedIntent: parsed.intent, total: results.length };
   },
 
-  [MSG_BUTLER.NL_COMMAND]: async (_payload) => {
-    logger.debug('BG', 'NL_COMMAND — not yet implemented');
-    return { ok: false, note: 'NL command engine not yet available' };
+  [MSG_BUTLER.NL_COMMAND]: async (payload) => {
+    const query = payload?.query || '';
+    if (!query) return { ok: false, note: 'Empty command' };
+
+    const parsed = await parseCommand(query);
+    logger.debug('BG', `NL_COMMAND "${query}" → intent=${parsed.intent} confidence=${parsed.confidence}`);
+
+    if (parsed.intent === 'search_history') {
+      // Command was actually a search — run search and return results
+      const searchQuery = parsed.params?.query || query;
+      const results = await searchIndex(searchQuery, {
+        timeRange: parsed.params?.timeRange,
+        limit: 20,
+      });
+      return { result: { ok: true }, results, total: results.length, parsed };
+    }
+
+    // Execute the parsed command (manage_tabs, goal, etc.)
+    const result = await executeCommand(parsed);
+    return { result, parsed };
   },
 
   [MSG_BUTLER.GET_INSIGHTS]: async () => {
@@ -367,14 +423,39 @@ const messageRouter = {
     };
   },
 
-  [MSG_BUTLER.GET_DAILY_DIGEST]: async (_payload) => {
-    logger.debug('BG', 'GET_DAILY_DIGEST — not yet implemented');
-    return { digest: '', note: 'Daily digest not yet available' };
+  [MSG_BUTLER.GET_DAILY_DIGEST]: async () => {
+    const recent = await experienceStream.getRecentEvents(24, 1000);
+    const pageVisits = recent.filter(e => e.eventType === MSG_INGESTION.PAGE_VISITED);
+
+    const domainCount = {};
+    for (const evt of pageVisits) {
+      const domain = evt.data?.domain;
+      if (domain) domainCount[domain] = (domainCount[domain] || 0) + 1;
+    }
+
+    const topSites = Object.entries(domainCount)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3)
+      .map(([domain, count]) => ({ domain, count }));
+
+    const summary = pageVisits.length > 0
+      ? `Browsed ${pageVisits.length} pages today, mostly on ${topSites.map(d => d.domain).join(', ')}.`
+      : 'No browsing activity yet today.';
+
+    return { pagesToday: pageVisits.length, topDomains: topSites, summary };
   },
 
-  [MSG_BUTLER.GET_TRENDS]: async (_payload) => {
-    logger.debug('BG', 'GET_TRENDS — not yet implemented');
-    return { trends: [], note: 'Trend analysis not yet available' };
+  [MSG_BUTLER.GET_TRENDS]: async () => {
+    const graph = await interestGraph.getInterestGraph();
+    const trending = await interestGraph.getTrendingTopics(7);
+    const patterns = await behaviorPatterns.getPatterns();
+
+    return {
+      interestGraph: graph?.topics?.slice(0, 10) || [],
+      trendingTopics: trending || [],
+      dailyRhythm: patterns?.dailyRhythm || null,
+      habits: patterns?.habits?.slice(0, 5) || [],
+    };
   },
 
   // --- UI ---
