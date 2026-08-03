@@ -109,8 +109,42 @@ function handleBackgroundMessage(msg, sender, sendResponse) {
   if (msg.type === 'ui:contextIntent' && msg.payload) {
     handleContextIntent(msg.payload);
   }
+  // Import progress messages
+  if (msg.type === 'ingestion:historyImportProgress') {
+    updateImportProgress(msg.current, msg.total, msg.phase);
+  }
+  if (msg.type === MT.INGESTION.HISTORY_IMPORT_DONE) {
+    onImportDone(msg.count || 0, msg.bookmarkCount || 0);
+  }
   // Always respond to keep the message channel open
   sendResponse?.({ ok: true });
+}
+
+let _importInProgress = true;
+
+function updateImportProgress(current, total, phase) {
+  _importInProgress = true;
+  const el = document.getElementById('pageCount');
+  if (el) {
+    const pct = total > 0 ? Math.round((current / total) * 100) : 0;
+    const label = phase === 'history' ? 'history' : phase === 'bookmarks' ? 'bookmarks' : 'data';
+    el.textContent = `Importing ${label}… ${current.toLocaleString()}/${total > 0 ? total.toLocaleString() : '?'} (${pct}%)`;
+  }
+}
+
+function onImportDone(historyCount, bookmarkCount) {
+  _importInProgress = false;
+  const total = historyCount + bookmarkCount;
+
+  // Update status bar
+  const el = document.getElementById('pageCount');
+  if (el) el.textContent = `${total.toLocaleString()} pages indexed`;
+
+  // Show toast
+  showToast(`Import complete: ${total.toLocaleString()} pages from your history`);
+
+  // Refresh insights if that view is active
+  loadStatusBar();
 }
 
 function handleContextIntent(payload) {
@@ -155,8 +189,10 @@ async function loadStatusBar() {
   try {
     const stats = await sendToBackground(MT.STORAGE.GET_STATS);
     const pageCount = document.getElementById('pageCount');
-    if (pageCount && stats.totalIndexedPages) {
-      pageCount.textContent = `${stats.totalIndexedPages} ${i18n.t('pages')}`;
+    if (pageCount && stats.totalIndexedPages != null) {
+      pageCount.textContent = `${stats.totalIndexedPages.toLocaleString()} ${i18n.t('pages')}`;
+    } else if (pageCount && !_importInProgress) {
+      pageCount.textContent = '—';
     }
   } catch { /* will update later */ }
 }

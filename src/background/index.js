@@ -281,15 +281,17 @@ const messageRouter = {
   },
 
   [MSG_STORAGE.GET_STATS]: async () => {
-    const [recentEvents, pendingAlerts, goals] = await Promise.all([
+    const [recentEvents, pendingAlerts, goals, totalIndexed] = await Promise.all([
       experienceStream.getRecentEvents(24, 1000),
       db.getPendingAlerts(),
       db.getAllGoals(),
+      db.countContentIndex(),
     ]);
     return {
       events24h: recentEvents.length,
       pendingAlerts: pendingAlerts.length,
       activeGoals: goals.filter((g) => g.active !== false).length,
+      totalIndexedPages: totalIndexed,
     };
   },
 

@@ -102,6 +102,17 @@ export async function startHistoryImport({ addEvent }) {
         bookmarkCount,
       })
       .catch(() => {});
+
+    // System notification so user knows even if side panel is closed
+    try {
+      chrome.notifications.create('avatara-import-done', {
+        type: 'basic',
+        iconUrl: 'assets/icons/icon-128.png',
+        title: 'Avatara — Import Complete',
+        message: `Indexed ${historyCount.toLocaleString()} pages from your browsing history and ${bookmarkCount.toLocaleString()} bookmarks. Your browser butler is ready!`,
+        priority: 1,
+      });
+    } catch (_) { /* notifications may not be available */ }
   } catch (err) {
     logger.error('HistoryImport', 'Import failed', err);
     // Reset so it can be retried on next startup

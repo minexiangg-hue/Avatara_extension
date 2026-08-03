@@ -348,6 +348,15 @@ export async function queryContentIndex(opts = {}) {
   });
 }
 
+/**
+ * Count total entries in the content index.
+ * @returns {Promise<number>}
+ */
+export async function countContentIndex() {
+  const db = await _getDB();
+  return _promisify(_ro(db, 'content_index').count());
+}
+
 // ---------------------------------------------------------------------------
 // Knowledge (key-value with structured values)
 // ---------------------------------------------------------------------------
