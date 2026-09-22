@@ -1,6 +1,7 @@
 import { normalizeBaseUrl, sanitizeState, sanitizeText } from './model.js';
 import { searchMemories, buildInsights, queryTokens } from './search.js';
 import { runAgent } from './agent.js';
+import { temporalHistoryRequest, storedHistory, historyPage, historyLocalAnswer } from './history.js';
 
 const DEFAULT_TIMEOUT = 25000;
 const MAX_INPUT = 4000;
@@ -44,6 +45,8 @@ function selectedGoals(text, state) {
 
 export function answerLocal(value, rawState) {
   const text = inputText(value);
+  const temporal = temporalHistoryRequest(text);
+  if (temporal) return historyLocalAnswer(historyPage(storedHistory(sanitizeState(rawState).memories, temporal), temporal));
   if (/^(?:你好|您好|hi|hello|hey|你能做什么|你是谁)[！!。？?\s]*$/i.test(text)) return { content: '我是 Avatara。当前处于本机模式，可以帮你检索明确指定的浏览记忆、查看目标进度。连接云端模型后，可以自然聊天、写作，并按需要调用工具。', sources: [], mode: 'local' };
   if (!isGoalQuestion(text) && !isMemoryQuestion(text)) return { content: '当前是本机模式，只提供明确的记忆检索和目标回顾，还不能自由生成回答。\n\n可以说「找一下我看过的 AI 文章」或「看看我的目标」；如需聊天、写作或讨论这个问题，请在设置中连接云端模型。', sources: [], mode: 'local' };
   const state = sanitizeState(rawState);

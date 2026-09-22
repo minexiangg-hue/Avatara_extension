@@ -15,7 +15,7 @@ function memoryState() {
 }
 
 test('native registry is strict, validates types and dates, and rejects extras and unsafe prototypes', () => {
-  assert.equal(AGENT_TOOLS.length, 9);
+  assert.equal(AGENT_TOOLS.length, 10);
   for (const item of AGENT_TOOLS) { assert.equal(item.type, 'function'); assert.equal(item.function.parameters.additionalProperties, false); }
   assert.deepEqual(validateToolArgs('search_memories', { query: '  向量  ' }), { query: '向量', limit: 6 });
   assert.deepEqual(validateToolArgs('search_memories', { query: '', limit: 1 }), { query: '', limit: 1 });
@@ -39,7 +39,7 @@ test('ordinary direct answer does not read personal collections or force tool us
     calls += 1;
     const body = JSON.parse(options.body);
     assert.equal(body.tool_choice, 'auto');
-    assert.equal(body.tools.length, 9);
+    assert.equal(body.tools.length, 10);
     assert.equal(body.messages.length, 8);
     assert.ok(body.messages.some(message => message.content === 'turn-4'));
     assert.equal(options.body.includes('turn-3'), false);

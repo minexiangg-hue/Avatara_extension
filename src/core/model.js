@@ -1,4 +1,5 @@
 const DEFAULT_BASE_URL = 'https://api.deepseek.com';
+export const MAX_MESSAGE_SOURCES = 100;
 const SOURCES = new Set(['history', 'page', 'manual']);
 const SECRET_PARAM = /(?:^|[_-])(?:access|refresh|auth|authorization|token|secret|password|passwd|pwd|key|apikey|api_key|session|sessionid|sid|jwt|code|credential|signature|sig|ticket|email)(?:$|[_-])/i;
 const TRACKING_PARAM = /^(?:utm_.+|fbclid|gclid|msclkid)$/i;
@@ -197,7 +198,7 @@ function normalizeSource(value) {
   return { id: sanitizeText(source.id, 120) || id('memory', url), title: sanitizeText(source.title, 240) || new URL(url).hostname, url, excerpt: sanitizeText(source.excerpt, 1200) };
 }
 
-const AGENT_NAMES = new Set(['search_memories', 'read_memory', 'list_goals', 'get_profile', 'get_activity_summary', 'read_current_page', 'list_tabs', 'create_goal', 'advance_goal', 'unknown_tool']);
+const AGENT_NAMES = new Set(['query_history', 'search_memories', 'read_memory', 'list_goals', 'get_profile', 'get_activity_summary', 'read_current_page', 'list_tabs', 'create_goal', 'advance_goal', 'unknown_tool']);
 const ACTION_STATUSES = new Set(['pending', 'approved', 'rejected', 'expired', 'failed']);
 
 /** Public progress contains short summaries only, never raw tool payloads. */
@@ -288,7 +289,7 @@ export function sanitizeState(value) {
   result.messages = array(input.messages).filter(message => message && ['user', 'assistant'].includes(message.role)).map(message => ({
     id: sanitizeText(message.id, 120) || id('message'), role: message.role,
     content: sanitizeText(message.content, 16000), createdAt: timestamp(message.createdAt),
-    sources: array(message.sources).map(normalizeSource).filter(Boolean).slice(0, 6),
+    sources: array(message.sources).map(normalizeSource).filter(Boolean).slice(0, MAX_MESSAGE_SOURCES),
     steps: message.role === 'assistant' ? distinctAgentItems(message.steps, normalizeAgentStep, 24) : [],
     actions: message.role === 'assistant' ? distinctAgentItems(message.actions, normalizeAgentAction, 8) : [],
     mode: message.mode === 'cloud' ? 'cloud' : 'local',

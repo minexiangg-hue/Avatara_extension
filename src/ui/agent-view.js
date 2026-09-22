@@ -2,6 +2,7 @@ import { icon } from './icons.js';
 
 const escape = value => String(value ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
 const labels = {
+  query_history: '按日期查询浏览记录',
   search_memories: '搜索记忆', read_memory: '阅读记忆正文', list_goals: '查看目标',
   get_profile: '了解当前关注', get_activity_summary: '回顾浏览概况',
   read_current_page: '阅读当前页面', list_tabs: '查看可访问的标签页',

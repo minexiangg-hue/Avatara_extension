@@ -1,4 +1,4 @@
-# Avatara 0.3 — implementation contract
+# Avatara 0.3.1 — implementation contract
 
 Fresh implementation. Existing `Avatara_extension` is reference only and is not modified.
 Dependency-free browser ES modules. MV3 worker, shared domain core, shared UI for full-page workspace and narrow side panel. A separate localhost demo uses synthetic data only and is not connected to the installed extension or browser profile.
@@ -21,6 +21,7 @@ Request `{type,payload:{}}`; response `{ok:true,data}` / `{ok:false,error:string
 - profile.update {name,focus}
 - settings.update partial settings; payload.ai may contain apiKey (consume separately; never merge into state). Changing provider origin while enabled requires an explicit non-empty key; disabled origin changes clear the old session key. Same-origin optional /v1 normalization preserves the key. A rejected persistent settings commit restores the previous session credential.
 - history.import {days:30} requests optional history permission in frontend user gesture before message; normalize URLs, exclude sensitive params, merge without overwriting meaningful excerpts or saved flags
+- history.query {period?,startDate?,endDate?,view?,offset?,limit?} returns a read-only date-query result, not state; uses exactly the strict query_history tool schema. Does not request permissions, import records, or enable capture.
 - memory.search {query,filter:'all'|'saved'}
 - memory.toggleSaved {id}
 - memory.capture {} activeTab grant needed from action/popup or frontend user gesture; reads selected active HTTP(S) tab, page title + up to 12000 chars main content; never opens or fetches other pages
@@ -52,6 +53,7 @@ The loop is bounded to 6 model rounds and 10 tool calls per turn. Tool names and
 
 | Read tool | Permitted effect |
 | --- | --- |
+| `query_history` | Query authorized Chrome visit events by local calendar dates; page or daily view; explicit totals, completeness, and pagination. Does not import history or read page bodies. |
 | `search_memories` | Search already stored local memories, up to 6 per call; no page fetching. |
 | `read_memory` | Read an existing memory by its real ID; no external navigation. |
 | `list_goals` | Read actual recorded goals and progress; no inference of completed work. |
@@ -61,6 +63,18 @@ The loop is bounded to 6 model rounds and 10 tool calls per turn. Tool names and
 | `list_tabs` | Read metadata Chrome currently permits; no switching, closing, or reopening tabs. |
 
 Read tools run automatically when selected by the model, within existing browser grants. They cannot escalate Chrome permissions themselves. If a current page or tab is not authorized, return a truthful tool error so the model can explain the required user action.
+
+### Date-query contract
+
+`history.js` supplies local date boundaries, event aggregation, pagination and explicitly incomplete legacy fallback. `background/history-query.js` reads authorized `chrome.history` APIs. Arguments select either `period` (`today`, `yesterday`, `last_7_days`, `last_30_days`, `last_90_days`) or inclusive `startDate` / `endDate` (YYYY-MM-DD, at most 366 calendar days). View is `pages` (default) or `days`; offset defaults to 0; limit defaults to 30 and cannot exceed 50. Boundaries use local calendar midnights, inclusive start/exclusive next-day end, including DST. Never interpret the numeric count of distinct last-visit dates as a complete activity calendar.
+
+The response includes `range` (dates, epoch boundaries, time zone), `source`, `complete`, `reasons`, `totalVisits`, `totalPages`, `activeDays`, `view`, `offset`, `limit`, `totalRows`, `results`, `nextOffset`, and a scope note. Page rows include normalized URL, current title, in-range event count, first/last event timestamps, observed dates and whether a saved body exists; day rows include date, visit count and page count. `complete` describes scan coverage, not whether every paginated row has been returned. `nextOffset=null` means no further rows, not that the underlying scan is complete.
+
+Search candidates from requested start through NOW (not just the requested end), then call `getVisits` using the exact raw URL returned by Chrome and filter visit timestamps to the requested range. This preserves yesterday's events when a URL was revisited today. Raw URLs never leave the browser API layer; normalized metadata is sent to the model only when the tool is invoked. Excluded domains are skipped before visit reads and fallback. Up to 8 concurrent reads, 10,000 candidate URLs, 50,000 matching events and 18 seconds per scan. Hitting a cap, failed reads or timeout makes coverage incomplete. Range snapshots are cached only within one turn; permission is checked again before using the cache. No schema migration, bulk import or capture toggle is required.
+
+Without permission or on search failure, `source=stored_latest_visits`, `complete=false`: a URL's retained last timestamp is only one observed event, never its lifetime `visitCount`. Empty incomplete results cannot establish absence. A final deterministic caveat preserves incomplete-coverage and unread-pagination warnings even if the model omits them. Chrome deletion/incognito/other-device gaps remain outside any completeness guarantee. The archive retention setting does not constrain Chrome's own retained history; exclusions apply to this live query.
+
+Only actually observed pages can receive source citations. Date-query answers may cite up to `MAX_MESSAGE_SOURCES=100`; other answers retain the 6-source limit. State sanitation preserves up to 100 sources so reloading does not lose references; prior-turn source metadata remains bounded to 6. Local runtime supports simple Chinese relative-date requests through the same authorized reader; independent preview uses incomplete synthetic archive evidence only.
 
 Write tools only create proposals: `create_goal({title,target,unit?,why?,dueDate?})` and `advance_goal({id,delta})`. They must not mutate a goal during the model loop or claim completion before confirmation. Targets/deltas are positive integers no greater than 100000; IDs must correspond to stored goals; dates are valid `YYYY-MM-DD`. User approval is a separate `chat.confirm` transaction, limited to the exact stored proposal. Approval is not an instruction to continue arbitrary model-selected writes. Receipts distinguish successful application, rejection, expiry, and failure.
 

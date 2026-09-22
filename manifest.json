@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Avatara · 懂你的浏览助理",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "让浏览成为积累。记住值得留下的页面，连接你的兴趣与目标。",
   "minimum_chrome_version": "116",
   "permissions": ["storage", "unlimitedStorage", "activeTab", "scripting", "sidePanel"],

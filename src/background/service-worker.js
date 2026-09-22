@@ -2,6 +2,8 @@ import { createInitialState, normalizeMemory, mergeMemories, sanitizeState, sani
 import { searchMemories } from '../core/search.js';
 import { answerLocal, answerCloud, testConnection } from '../core/assistant.js';
 import { validateToolArgs } from '../core/agent-tools.js';
+import { queryChromeHistory } from './history-query.js';
+import { temporalHistoryRequest, historyLocalAnswer } from '../core/history.js';
 
 export const STATE_KEY = 'avatara_state';
 export const API_KEY = 'avatara_api_key';
@@ -140,8 +142,9 @@ export function createRuntime(api, { cloud = answerCloud, local = answerLocal, t
     if (!excerpt) fail('当前页面没有可读取的正文。表单和输入内容不会被读取。');
     return { title: sanitizeText(page.title, 240), url: normalizeUrl(currentUrl.href), excerpt, domain: currentUrl.hostname };
   };
-  const browserTool = async (name, args, state) => {
-    validateToolArgs(name, args);
+  const browserTool = async (name, args, state, historyCache = new Map()) => {
+    args = validateToolArgs(name, args);
+    if (name === 'query_history') return queryChromeHistory(api, state, args, { now: now(), cache: historyCache });
     if (name === 'read_current_page') return readCurrentPage(state);
     if (name === 'list_tabs') return allowedTabs(state);
     fail('该工具不能在浏览器运行时直接执行。');
@@ -166,6 +169,7 @@ export function createRuntime(api, { cloud = answerCloud, local = answerLocal, t
     const state = await readState(type !== 'data.export');
     switch (type) {
       case 'state.get': return exposed(state);
+      case 'history.query': return browserTool('query_history', payload, state);
       case 'data.export': {
         const safe = enforcePolicy(state);
         safe.settings.ai.hasKey = false;
@@ -299,6 +303,7 @@ export function createRuntime(api, { cloud = answerCloud, local = answerLocal, t
         const text = cleanText(apiKey ? rawText.split(apiKey).join('[已隐藏密钥]') : rawText, 6000);
         if (!text) fail('先写一点想聊的内容吧。');
         let answer;
+        const historyCache = new Map();
         if (state.settings.ai.enabled) {
           if (!apiKey) fail('当前浏览器会话中没有 API 密钥。请在设置中重新填写，或关闭云端 AI 使用本地助理。');
           await checkProvider(state.settings.ai.baseUrl);
@@ -308,9 +313,12 @@ export function createRuntime(api, { cloud = answerCloud, local = answerLocal, t
             if (!requestId || !publicStep || typeof api.runtime.sendMessage !== 'function') return;
             try { await api.runtime.sendMessage({ type: 'agent.progress', requestId, step: publicStep }); } catch { /* Closing a view must not abort the agent. */ }
           };
-          try { answer = await cloud(text, state, { apiKey, executeTool: (name, args) => browserTool(name, args, state), onStep }); }
+          try { answer = await cloud(text, state, { apiKey, executeTool: (name, args) => browserTool(name, args, state, historyCache), onStep }); }
           catch (error) { fail(`云端回答未完成：${cleanText(error?.message || '连接失败，请稍后重试。', 400)}`); }
-        } else answer = local(text, state);
+        } else {
+          const temporal = temporalHistoryRequest(text);
+          answer = temporal ? historyLocalAnswer(await browserTool('query_history', temporal, state, historyCache)) : local(text, state);
+        }
         if (apiKey) answer = JSON.parse(JSON.stringify(answer, (_key, value) => typeof value === 'string' ? value.split(apiKey).join('[已隐藏密钥]') : value));
         const actions = (Array.isArray(answer.actions) ? answer.actions : []).slice(0, 8).map(normalizeAgentAction).filter(Boolean).map(action => action.status === 'failed' ? action : {
           ...action, status: 'pending', createdAt: timestamp(), expiresAt: new Date(now().getTime() + 30 * 60000).toISOString(),
