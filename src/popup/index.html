@@ -1,44 +1,22 @@
-<!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<!doctype html>
+<html lang="zh-CN">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Avatara</title>
   <link rel="stylesheet" href="popup.css">
+  <script type="module" src="popup.js"></script>
 </head>
 <body>
-  <div class="popup-shell">
-    <!-- Header -->
-    <header class="popup-header">
-      <span class="popup-logo-dot"></span>
-      <span class="popup-title">Avatara</span>
-      <button class="btn-icon" id="btnSettings" title="Settings" style="margin-left:auto;">⚙</button>
-    </header>
-
-    <!-- Daily Summary -->
-    <section class="popup-section" id="dailySummary">
-      <div class="skeleton" style="height:40px;"></div>
-    </section>
-
-    <!-- Quick Search -->
-    <section class="popup-section">
-      <input type="text" class="popup-search" id="quickSearch" placeholder="Search your history…">
-    </section>
-
-    <!-- Active Goal -->
-    <section class="popup-section" id="goalCard" style="display:none;"></section>
-
-    <!-- Quick Actions -->
-    <section class="popup-actions">
-      <button class="btn btn-primary btn-sm" id="btnOpenPanel">Open Side Panel</button>
-    </section>
-
-    <!-- Footer -->
-    <footer class="popup-footer">
-      <span class="badge badge--accent" id="tierBadge">Free</span>
-      <span class="text-muted">v0.1.0</span>
-    </footer>
-  </div>
-  <script type="module" src="popup.js"></script>
+  <header><div class="mark" aria-hidden="true">a<span>✳</span></div><div><strong>Avatara</strong><p>每一次浏览，都有所积累。</p></div></header>
+  <main>
+    <div class="eyebrow">YOUR EVERYDAY COMPANION</div>
+    <h1>把这一页，<br>留给未来的自己。</h1>
+    <p class="intro">保存当前页面的内容，让下次寻找<br>和新的想法，都有迹可循。</p>
+    <button id="capture" class="primary"><span>记住当前页面</span><span aria-hidden="true">＋</span></button>
+    <div class="secondary"><button id="workspace">打开工作台 <span aria-hidden="true">↗</span></button><button id="panel">打开侧边栏 <span aria-hidden="true">◧</span></button></div>
+    <p id="status" role="status" aria-live="polite">默认保存在本机，由你决定记住什么。</p>
+  </main>
+  <footer><span class="dot"></span> 记忆 · 目标 · 好一点的每一天</footer>
 </body>
 </html>

@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Avatara · 合成 Agent 组件测试夹具</title>
+    <link rel="stylesheet" href="../ui/styles.css">
+    <script type="module" src="agent-fixture.js"></script>
+    <style>
+      body { min-height: 100vh; padding: 40px 20px; }
+      .fixture-card { max-width: 720px; margin: 0 auto; padding: 32px; border: 1px solid var(--line); border-radius: 12px; background: var(--card); }
+      h1 { font-size: 26px; margin: 12px 0 18px; line-height: 1.5; }
+      p, li { line-height: 1.9; font-size: 14px; }
+      ul { margin: 18px 0; padding-left: 22px; }
+      .fixture-actions { display: flex; flex-wrap: wrap; gap: 12px; margin: 22px 0 16px; }
+      #fixture-status { margin-top: 18px; padding: 15px; border-radius: 7px; background: var(--sage); overflow-wrap: anywhere; }
+      #fixture-status[data-error="true"] { background: #f5e5df; color: #803f30; }
+      .fixture-warning { margin-top: 16px; color: #805f2d; }
+      @media(max-width:470px) { body { padding: 18px 12px; } .fixture-card { padding: 23px 18px; } h1 { font-size: 23px; } }
+    </style>
+  </head>
+  <body>
+    <main class="fixture-card">
+      <span class="eyebrow">SYNTHETIC COMPONENT TEST · DEV ONLY</span>
+      <h1>合成 Agent 组件测试夹具</h1>
+      <p>此页只为真实浏览器中的界面验收准备固定数据。它没有连接 AI API、已安装扩展或浏览器历史。卡片和执行摘要均由测试脚本构造，不是模型输出，也不是实际工具执行记录。</p>
+      <ul>
+        <li>一条合成记忆、一个进度为 1 / 4 的合成目标。</li>
+        <li>两张有效期为 30 分钟的待确认卡片：创建目标、推进已有目标。</li>
+        <li>确认／拒绝只影响此端口的演示数据，普通演示不会自动出现这些卡片。</li>
+      </ul>
+      <p id="fixture-storage" class="fixture-warning"></p>
+      <div class="fixture-actions">
+        <button id="load-fixture" type="button" class="button button-primary">检查演示数据…</button>
+        <a class="button button-outline" href="/index.html#chat">打开对话，验收卡片</a>
+      </div>
+      <p>建议在专用测试端口（例如 4321）使用。页面载入不会写入数据；只有点击明确的载入／重置按钮才会替换当前端口的演示状态。</p>
+      <p id="fixture-status" role="status" aria-live="polite">尚未载入测试夹具。</p>
+    </main>
+  </body>
+</html>

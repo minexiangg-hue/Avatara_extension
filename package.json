@@ -1,0 +1,13 @@
+{
+  "name": "avatara-next",
+  "version": "0.3.0",
+  "private": true,
+  "type": "module",
+  "description": "A considered browser companion for memory, attention, and intention.",
+  "scripts": {
+    "dev": "node scripts/preview.mjs",
+    "test": "node --test tests/*.test.mjs",
+    "check": "node scripts/check.mjs"
+  },
+  "engines": { "node": ">=20" }
+}

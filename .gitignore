@@ -1,10 +1,23 @@
-node_modules/
-dist/
-*.zip
+# Local credentials are never source assets.
 .env
-.env.local
-.DS_Store
+.env.*
+!.env.example
+api_key.txt
+api_key*.txt
+**/api_key*.txt
+credentials*.json
+secrets*.json
+*.key
+*.pem
+
+# Generated development output. Keep source assets and icons tracked.
+node_modules/
+.cache/
+cache/
+artifacts/
+coverage/
+dist/
+.preview-profile*/
 *.log
-.vscode/
-.idea/
-.claude/
+.DS_Store
+Thumbs.db
